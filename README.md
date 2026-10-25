@@ -4,10 +4,12 @@ ak-pointer records what you do in a macOS window, saves it as a text file, and p
 
 Coordinates are relative to the window, so playback still lines up if the window has moved.
 
+The window is an Electron app. Bun installs dependencies, runs the tests, and bundles the TypeScript. Recording and playback stay in a native addon, because macOS turns off an event tap whose callback enters JavaScript.
+
 ## Requirements
 
 - macOS
-- [Rust](https://rustup.rs/)
+- [Bun](https://bun.sh)
 - Xcode command line tools
 
 ## Run
@@ -15,14 +17,15 @@ Coordinates are relative to the window, so playback still lines up if the window
 From this directory:
 
 ```bash
-cargo run
+bun install
+bun run start
 ```
 
 Quit an older copy before starting a new one. A rebuild does not replace a process that is already running.
 
 ## Permissions
 
-Grant these to the app that launches ak-pointer. When you start it from Cursor’s terminal, that app is Cursor.
+Grant these to Electron. When you start ak-pointer from Cursor’s terminal, also enable Cursor. The terminal prints the exact program path if Accessibility is missing.
 
 1. System Settings → Privacy & Security → Accessibility
 2. System Settings → Privacy & Security → Input Monitoring
@@ -39,4 +42,4 @@ Edit opens a saved action. Typed text can be corrected there, and a wrong click 
 
 ## Develop
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the module layout and tests.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the layout and tests.

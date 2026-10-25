@@ -5,6 +5,7 @@
   "description": "Record and replay mouse and keyboard actions against a macOS window",
   "main": "dist/main.js",
   "scripts": {
+    "install": "electron-rebuild -f",
     "build": "bun scripts/build.ts",
     "rebuild": "electron-rebuild -f",
     "start": "bun scripts/build.ts && electron-rebuild -f && electron .",
