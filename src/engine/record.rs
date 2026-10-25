@@ -1,7 +1,7 @@
 use std::os::raw::c_void;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::atomic::{AtomicBool, AtomicPtr, Ordering};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use crate::model::{Action, EventType, InputEvent, MouseButton, ScrollUnit, TargetWindow, KEY_F8};
 use crate::platform::ffi::*;
@@ -61,6 +61,7 @@ struct Recorder {
     last_motion: Instant,
     last_motion_x: f64,
     last_motion_y: f64,
+    bounds_at: Instant,
 }
 
 impl Recorder {
@@ -93,6 +94,7 @@ impl Recorder {
             last_motion: now,
             last_motion_x: 0.0,
             last_motion_y: 0.0,
+            bounds_at: now,
         }
     }
 
@@ -185,14 +187,12 @@ impl Recorder {
                 CFRunLoopAddTimer(CFRunLoopGetCurrent(), timer.as_ptr(), kCFRunLoopCommonModes);
             }
             self.origin = Instant::now();
-            if !STOP_RECORDING.load(Ordering::SeqCst) {
-                RECORD_LOOP.store(CFRunLoopGetCurrent(), Ordering::SeqCst);
-                if STOP_RECORDING.load(Ordering::SeqCst) {
-                    CFRunLoopStop(CFRunLoopGetCurrent());
-                }
-                CFRunLoopRun();
-                RECORD_LOOP.store(std::ptr::null_mut(), Ordering::SeqCst);
+            RECORD_LOOP.store(CFRunLoopGetCurrent(), Ordering::SeqCst);
+            if STOP_RECORDING.load(Ordering::SeqCst) {
+                CFRunLoopStop(CFRunLoopGetCurrent());
             }
+            CFRunLoopRun();
+            RECORD_LOOP.store(std::ptr::null_mut(), Ordering::SeqCst);
             if let Some(timer) = &timer {
                 CFRunLoopRemoveTimer(CFRunLoopGetCurrent(), timer.as_ptr(), kCFRunLoopCommonModes);
             }
@@ -211,6 +211,10 @@ impl Recorder {
                 action: Action::new(),
             };
         }
+        println!(
+            "Recording stopped with {} events.",
+            self.action.events.len()
+        );
         if let Some(start) = self.action.events.iter().map(|event| event.t_ms).min() {
             for event in &mut self.action.events {
                 event.t_ms -= start;
@@ -243,10 +247,8 @@ impl Recorder {
                 unsafe { CGEventGetIntegerValueField(event, K_CG_KEYBOARD_EVENT_KEYCODE) } as u16;
             if code == KEY_F8 {
                 if event_type == K_CG_EVENT_KEY_DOWN {
-                    unsafe {
-                        CGEventTapEnable(self.tap, false);
-                        CFRunLoopStop(CFRunLoopGetCurrent());
-                    }
+                    STOP_RECORDING.store(true, Ordering::SeqCst);
+                    unsafe { CFRunLoopStop(CFRunLoopGetCurrent()) };
                 }
                 return;
             }
@@ -262,12 +264,15 @@ impl Recorder {
         }
 
         let point = unsafe { CGEventGetLocation(event) };
-        let under = self.target_at(point.x, point.y);
+        self.refresh_locked_bounds();
+        let inside = self.locked && contains(&self.last_seen, point.x, point.y);
         if is_mouse_down(event_type) {
-            let Some(window) = under else {
-                return;
-            };
-            self.adopt(window);
+            if !inside {
+                let Some(window) = self.target_at(point.x, point.y) else {
+                    return;
+                };
+                self.adopt(window);
+            }
             self.buttons += 1;
         } else if is_mouse_up(event_type) {
             if self.buttons == 0 || !self.locked {
@@ -278,10 +283,11 @@ impl Recorder {
             if self.buttons == 0 || !self.locked {
                 return;
             }
-        } else if let Some(window) = under {
+        } else if !inside {
+            let Some(window) = self.target_at(point.x, point.y) else {
+                return;
+            };
             self.adopt(window);
-        } else {
-            return;
         }
         if self.locked {
             self.record(event_type, event);
@@ -303,10 +309,23 @@ impl Recorder {
         true
     }
 
+    fn refresh_locked_bounds(&mut self) {
+        if !self.locked || self.bounds_at.elapsed() < Duration::from_millis(100) {
+            return;
+        }
+        self.bounds_at = Instant::now();
+        if let Some(live) = window::window_by_id(self.original.id) {
+            self.last_seen = live;
+        }
+    }
+
     fn is_allowed(&self, window: &WindowInfo) -> bool {
-        self.allowed.iter().any(|item| {
-            item.owner == window.owner && (item.title.is_empty() || item.title == window.title)
-        })
+        if window.id != 0 && self.originals.iter().any(|known| known.id == window.id) {
+            return true;
+        }
+        self.allowed
+            .iter()
+            .any(|item| item.owner == window.owner && title_matches(&item.title, &window.title))
     }
 
     fn same_app_target(&self, front: &WindowInfo) -> Option<WindowInfo> {
@@ -381,9 +400,6 @@ impl Recorder {
         );
         if motion && !self.keep_motion(point.x, point.y) {
             return;
-        }
-        if let Some(now) = window::window_by_id(self.original.id) {
-            self.last_seen = now;
         }
         let relative = window::to_relative(&self.original, &self.last_seen, point.x, point.y);
         let mut stored = InputEvent::new(EventType::Move);
@@ -482,6 +498,16 @@ impl Recorder {
         self.last_motion_x = x;
         self.last_motion_y = y;
     }
+}
+
+fn title_matches(wanted: &str, actual: &str) -> bool {
+    if wanted.is_empty() || wanted == actual {
+        return true;
+    }
+    if actual.is_empty() {
+        return false;
+    }
+    actual.starts_with(wanted) || wanted.starts_with(actual)
 }
 
 fn contains(window: &WindowInfo, x: f64, y: f64) -> bool {

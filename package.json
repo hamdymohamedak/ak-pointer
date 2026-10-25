@@ -1,0 +1,20 @@
+{
+  "name": "ak-pointer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Record and replay mouse and keyboard actions against a macOS window",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "bun scripts/build.ts",
+    "rebuild": "electron-rebuild -f",
+    "start": "bun scripts/build.ts && electron-rebuild -f && electron .",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "electron": "^35.1.0",
+    "node-addon-api": "^8.3.0"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^3.7.1"
+  }
+}

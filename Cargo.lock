@@ -130,6 +130,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ak-pointer"
+version = "0.1.0"
+dependencies = [
+ "eframe",
+]
+
+[[package]]
 name = "android-activity"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2306,13 +2313,6 @@ dependencies = [
  "fdeflate",
  "flate2",
  "miniz_oxide 0.8.9",
-]
-
-[[package]]
-name = "pointer"
-version = "0.1.0"
-dependencies = [
- "eframe",
 ]
 
 [[package]]

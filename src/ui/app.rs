@@ -205,13 +205,20 @@ impl RecorderApp {
                     "The selected app has no window. Open it, then record again.".into()
                 }
                 RecordStatus::Ok if result.action.events.is_empty() => {
-                    "Nothing was recorded on the selected app.".into()
+                    let message = "Nothing was recorded inside the selected window, so it was not saved. Click the simulator screen, then press Stop.".to_string();
+                    println!("{message}");
+                    message
                 }
                 RecordStatus::Ok => {
+                    let path = store.path_for(&name);
                     if store.save(&name, &result.action) {
-                        format!("Saved {name}. {}", tally(&result.action))
+                        let message = format!("Saved {}. {}", path.display(), tally(&result.action));
+                        println!("{message}");
+                        message
                     } else {
-                        format!("Could not save {name}.")
+                        let message = format!("Could not save {}.", path.display());
+                        println!("{message}");
+                        message
                     }
                 }
             };
@@ -315,7 +322,7 @@ impl eframe::App for RecorderApp {
         egui::TopBottomPanel::top("record").show(ctx, |ui| {
             ui.add_space(6.0);
             ui.horizontal(|ui| {
-                ui.heading("Actions");
+                ui.heading("ak-pointer");
                 ui.weak("1 choose the app   ·   2 record   ·   3 play the list");
             });
             if !window::keyboard_capture_ready() {
@@ -343,6 +350,7 @@ impl eframe::App for RecorderApp {
                     self.stop();
                 }
             });
+            ui.label(&self.status);
             ui.add_space(4.0);
         });
 
@@ -623,7 +631,7 @@ pub fn run() -> eframe::Result<()> {
         ..Default::default()
     };
     eframe::run_native(
-        "Emulator action recorder",
+        "ak-pointer",
         options,
         Box::new(move |_cc| Ok(Box::new(RecorderApp::new(store)))),
     )

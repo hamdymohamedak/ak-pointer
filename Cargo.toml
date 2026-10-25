@@ -1,5 +1,5 @@
 [package]
-name = "pointer"
+name = "ak-pointer"
 version = "0.1.0"
 edition = "2021"
 description = "Record and replay mouse and keyboard actions against an emulator window"
@@ -8,5 +8,5 @@ description = "Record and replay mouse and keyboard actions against an emulator 
 eframe = "0.31"
 
 [[bin]]
-name = "pointer"
+name = "ak-pointer"
 path = "src/main.rs"

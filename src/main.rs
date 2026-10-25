@@ -1,3 +1,3 @@
 fn main() -> eframe::Result<()> {
-    pointer::ui::run()
+    ak_pointer::ui::run()
 }
