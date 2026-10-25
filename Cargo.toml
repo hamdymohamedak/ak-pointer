@@ -1,0 +1,12 @@
+[package]
+name = "pointer"
+version = "0.1.0"
+edition = "2021"
+description = "Record and replay mouse and keyboard actions against an emulator window"
+
+[dependencies]
+eframe = "0.31"
+
+[[bin]]
+name = "pointer"
+path = "src/main.rs"
